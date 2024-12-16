@@ -21,7 +21,7 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 NOTION_INTEGRATION_TOKEN = os.getenv('NOTION_INTEGRATION_TOKEN')
 NOTION_DATABASE_ID = os.getenv('NOTION_DATABASE_ID')
-AUTHORIZED_USER_IDS = os.getenv('AUTHORIZED_USER_IDS')
+AUTHORIZED_USER_IDS = os.getenv('AUTHORIZED_USER_IDS', '')
 
 AUTHORIZED_USERS = set(map(int, AUTHORIZED_USER_IDS.split(','))) if AUTHORIZED_USER_IDS else set()
 
@@ -101,7 +101,7 @@ async def handle_expense(update: Update, context):
     """Process incoming expense messages and update Notion database"""
     # Verify User authorization
     user_id = update.effective_user.id
-    if AUTHORIZED_USERS or user_id not in AUTHORIZED_USERS: 
+    if AUTHORIZED_USERS and user_id not in AUTHORIZED_USERS: 
         await update.message.reply_text("❌ Sorry, you are not authorized to add expenses using this bot.")
         logger.warning(f"Unauthorized access attempt by user {user_id}")
         return
