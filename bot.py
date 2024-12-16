@@ -32,24 +32,35 @@ notion = Client(auth=NOTION_INTEGRATION_TOKEN)
 def parse_expense_message(message: str):
     """
     Parse expense message in format:
-    Item, Price, Store, Category
+    Item, Price, Store, Category, Quantity
     """
     # Try parsing with optional date
     parts = [part.strip() for part in message.split(',')]
     
     # Determine if date is included
-    if len(parts) == 5:
+    if len(parts) == 6:
+        try:
+            # Validate date format
+            date = datetime.strptime(parts[0], '%Y-%m-%d').date()
+            item, price, store, category, quantity = parts[1:]
+        except ValueError:
+            # If date parsing fails, assume today's date
+            date = datetime.now().date()
+            item, price, store, category, quantity = parts
+    elif len(parts) == 5:
         try:
             # Validate date format
             date = datetime.strptime(parts[0], '%Y-%m-%d').date()
             item, price, store, category = parts[1:]
+            quantity = ''
         except ValueError:
             # If date parsing fails, assume today's date
             date = datetime.now().date()
-            item, price, store, category = parts
+            item, price, store, category, quantity = parts
     elif len(parts) == 4:
         date = datetime.now().date()
         item, price, store, category = parts
+        quantity = ''
     else:
         raise ValueError("Invalid message format. Use: Item, Price, Store, Category")
     
@@ -58,7 +69,8 @@ def parse_expense_message(message: str):
         'item': item,
         'price': float(price),
         'store': store,
-        'category': category
+        'category': category,
+        'quantity': quantity
     }
 
 async def start(update: Update, context):
@@ -67,9 +79,10 @@ async def start(update: Update, context):
         "Expense Tracker Bot 💰\n\n"
         "Send expenses in this format:\n"
         "Item, Price, Store, Category\n\n"
-        "Optional: You can include a date (YYYY-MM-DD) at the start\n\n"
+        "Optional: You can include a date (YYYY-MM-DD) at the start\nand quantity at the end\n\n"
         "Examples:\n"
-        "• Milk, 3.50, Walmart, Groceries\n"
+        "• Eggs, 3.50, Walmart, Groceries\n"
+        "• Milk, 2.25, Costco, Groceries, 2 gallons\n"
         "• 2024-01-15, Bread, 2.25, Kroger, Groceries"
     )
 
@@ -115,6 +128,17 @@ async def handle_expense(update: Update, context):
                     "select": {
                         "name": expense['category']
                     }
+                },
+                "Quantity": {
+                    "type": "rich_text",
+                    "rich_text": [
+                        {
+                            "type": "text",
+                            "text": {
+                                "content": expense['quantity']
+                            }
+                        }
+                    ]
                 }
             }
         )
@@ -126,13 +150,14 @@ async def handle_expense(update: Update, context):
             f"🛍️ Item: {expense['item']}\n"
             f"💲 Price: ${expense['price']:.2f}\n"
             f"🏪 Store: {expense['store']}\n"
-            f"📦 Category: {expense['category']}"
+            f"📦 Category: {expense['category']}\n"
+            f"🔢 Quantity: {expense['quantity']}"
         )
     
     except ValueError as ve:
         # Handle parsing errors
         await update.message.reply_text(f"❌ Error: {str(ve)}\n\n"
-            "Please use the format: Item, Price, Store, Category\n"
+            "Please use the format: Date (optional), Item, Price, Store, Category, Quantity (optional)\n"
             "Example: Milk, 3.50, Walmart, Groceries")
     except Exception as e:
         # Handle other potential errors
