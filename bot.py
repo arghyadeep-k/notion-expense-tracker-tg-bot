@@ -90,7 +90,7 @@ async def start(update: Update, context):
             "• Milk, 2.25, Costco, Groceries, 2 gallons\n"
             "• 2024-01-15, Bread, 2.25, Kroger, Groceries"
         )
-    else 
+    else:
         await update.message.reply_text(
             "❌ Sorry, you are not authorized to use this bot."
         )
