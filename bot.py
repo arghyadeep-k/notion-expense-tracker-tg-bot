@@ -21,6 +21,7 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 NOTION_INTEGRATION_TOKEN = os.getenv('NOTION_INTEGRATION_TOKEN')
 NOTION_DATABASE_ID = os.getenv('NOTION_DATABASE_ID')
+AUTHORIZED_USER_IDS = os.getenv('AUTHORIZED_USER_IDS').split(',')
 
 # Validate that tokens are present
 if not all([TELEGRAM_BOT_TOKEN, NOTION_INTEGRATION_TOKEN, NOTION_DATABASE_ID]):
@@ -75,19 +76,34 @@ def parse_expense_message(message: str):
 
 async def start(update: Update, context):
     """Handler for /start command"""
-    await update.message.reply_text(
-        "Expense Tracker Bot 💰\n\n"
-        "Send expenses in this format:\n"
-        "Item, Price, Store, Category\n\n"
-        "Optional: You can include a date (YYYY-MM-DD) at the start\nand quantity at the end\n\n"
-        "Examples:\n"
-        "• Eggs, 3.50, Walmart, Groceries\n"
-        "• Milk, 2.25, Costco, Groceries, 2 gallons\n"
-        "• 2024-01-15, Bread, 2.25, Kroger, Groceries"
-    )
+    
+    # Verify User authorization
+    user_id = update.effective_user.id
+    if not AUTHORIZED_USER_IDS or str(user_id) in AUTHORIZED_USER_IDS:
+        await update.message.reply_text(
+            "Expense Tracker Bot 💰\n\n"
+            "Send expenses in this format:\n"
+            "Item, Price, Store, Category\n\n"
+            "Optional: You can include a date (YYYY-MM-DD) at the start\nand quantity at the end\n\n"
+            "Examples:\n"
+            "• Eggs, 3.50, Walmart, Groceries\n"
+            "• Milk, 2.25, Costco, Groceries, 2 gallons\n"
+            "• 2024-01-15, Bread, 2.25, Kroger, Groceries"
+        )
+    else 
+        await update.message.reply_text(
+            "❌ Sorry, you are not authorized to use this bot."
+        )
 
 async def handle_expense(update: Update, context):
     """Process incoming expense messages and update Notion database"""
+    # Verify User authorization
+    user_id = update.effective_user.id
+    if AUTHORIZED_USER_IDS or str(user_id) not in AUTHORIZED_USER_IDS: 
+        await update.message.reply_text("❌ Sorry, you are not authorized to add expenses using this bot.")
+        logger.warning(f"Unauthorized access attempt by user {user_id}")
+        return
+
     try:
         # Parse the expense message
         expense = parse_expense_message(update.message.text)
